@@ -221,9 +221,10 @@ class TransformerEncoderBase(FairseqEncoder):
             encoder_states.append(x)
 
         # encoder layers
+        state = None
         for layer in self.layers:
-            lr = layer(
-                x, encoder_padding_mask=encoder_padding_mask if has_pads else None
+            lr, state = layer(
+                x, encoder_padding_mask=encoder_padding_mask if has_pads else None, state = state
             )
 
             if isinstance(lr, tuple) and len(lr) == 2:

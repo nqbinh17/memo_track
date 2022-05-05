@@ -16,6 +16,8 @@ from fairseq.models.transformer import (
     TransformerConfig,
 )
 
+from fairseq.custom_transformer.fast_transformer import LinearAttention
+
 
 class TransformerEncoderLayerBase(nn.Module):
     """Encoder layer block.
@@ -40,6 +42,7 @@ class TransformerEncoderLayerBase(nn.Module):
         self.quant_noise = cfg.quant_noise.pq
         self.quant_noise_block_size = cfg.quant_noise.pq_block_size
         self.self_attn = self.build_self_attention(self.embed_dim, cfg)
+        self.linear_attn = LinearAttention(cfg)
         self.self_attn_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
         self.dropout_module = FairseqDropout(
             cfg.dropout, module_name=self.__class__.__name__
@@ -165,6 +168,7 @@ class TransformerEncoderLayerBase(nn.Module):
         x,
         encoder_padding_mask: Optional[Tensor],
         attn_mask: Optional[Tensor] = None,
+        state: Optional[Tensor] = None
     ):
         """
         Args:
@@ -194,6 +198,8 @@ class TransformerEncoderLayerBase(nn.Module):
         residual = x
         if self.normalize_before:
             x = self.self_attn_layer_norm(x)
+        x, state = self.linear_attn(x, state)
+        """
         x, _ = self.self_attn(
             query=x,
             key=x,
@@ -202,6 +208,7 @@ class TransformerEncoderLayerBase(nn.Module):
             need_weights=False,
             attn_mask=attn_mask,
         )
+        """
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
@@ -223,7 +230,7 @@ class TransformerEncoderLayerBase(nn.Module):
 
         if self.return_fc and not torch.jit.is_scripting():
             return x, fc_result
-        return x
+        return x, state
 
 
 # backward compatible with the legacy argparse format
