@@ -1,7 +1,9 @@
 import torch
 import torch.nn as nn
 
-class AFTFullAttention(nn.Module):
+from performer_pytorch import FastAttention
+
+class Performer(nn.Module):
     def __init__(self, cfg):
         super().__init__()
         self.embed_dim = cfg.encoder.embed_dim
@@ -15,16 +17,18 @@ class AFTFullAttention(nn.Module):
         self.fc_value = nn.Linear(self.embed_dim, self.embed_dim)
         self.fc_out = nn.Linear(self.embed_dim, self.embed_dim)
 
+        self.attn_fn = FastAttention(
+            dim_heads = self.head_dim,
+            nb_features = 4 * self.head_dim,
+            causal = False
+        )
+
     def forward(self, x):
-        # Extract some shapes
-        batch_size, _, _ = x.shape
+        batch_size = x.shape[0]
         query, key, value = [l(vector).view(batch_size, -1, self.heads, self.head_dim).transpose(1, 2)
                      for l, vector in zip((self.fc_query, self.fc_key, self.fc_value), (x, x, x))]
-
-        Q = torch.sigmoid(query)
-        K = key
-        K = torch.softmax(K, dim=-1) 
-        V = Q * (K * value).sum(dim=1, keepdim=True)
-        V = V.transpose(1, 2).contiguous() \
+        
+        out = self.attn_fn(query, key, value)
+        out = out.transpose(1, 2).contiguous() \
             .view(batch_size, -1, self.embed_dim)
-        return self.fc_out(V)
+        return self.fc_out(out)

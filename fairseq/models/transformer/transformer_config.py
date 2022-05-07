@@ -48,10 +48,7 @@ class EncDecBaseConfig(FairseqDataclass):
     layers_to_keep: Optional[List[int]] = field(
         default=None, metadata={"help": "which layers to *keep* when pruning"}
     )
-    # Custom Attention
-    attention_module: str = field(
-        default="self_attn", metadata={"help": "choose attention type: self_attn, linear_attn, free_attn"}
-    )
+
 
 @dataclass
 class DecoderConfig(EncDecBaseConfig):
@@ -225,6 +222,11 @@ class TransformerConfig(FairseqDataclass):
         metadata={"help": "don't add an extra layernorm after the last decoder block"},
     )
 
+    # Custom Attention
+    attention_module: str = field(
+        default="self_attn", metadata={"help": "choose attention type: self_attn, linear_attn, free_attn"}
+    )
+    
     # We need to make this hierarchical dataclass like the flat namespace
     # __getattr__ and __setattr__ here allow backward compatibility
     # for subclasses of Transformer(Legacy) that depend on read/write on

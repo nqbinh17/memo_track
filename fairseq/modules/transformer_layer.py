@@ -18,6 +18,9 @@ from fairseq.models.transformer import (
 
 from fairseq.custom_transformer.fast_transformer import LinearAttention
 from fairseq.custom_transformer.attention_free import AFTFullAttention
+from fairseq.custom_transformer.performer import Performer
+from fairseq.custom_transformer.fnet import FNet
+
 
 class TransformerEncoderLayerBase(nn.Module):
     """Encoder layer block.
@@ -45,6 +48,10 @@ class TransformerEncoderLayerBase(nn.Module):
             self.attn_module = LinearAttention(cfg)
         elif self.attention_module == "free_attn":
             self.attn_module = AFTFullAttention(cfg)
+        elif self.attention_module == "performer":
+            self.attn_module = Performer(cfg)
+        elif self.attention_module == "performer":
+            self.attn_module = FNet()
         else:
             raise ValueError("Don't support attention module: ", self.attention_module)
 
@@ -219,8 +226,11 @@ class TransformerEncoderLayerBase(nn.Module):
         elif self.attention_module == "linear_attn":
             x, state = self.attn_module(x, state)
         elif self.attention_module == "free_attn":
-            x = self.attn_module(x, encoder_padding_mask)
-        
+            x = self.attn_module(x)
+        elif self.attention_module == "performer":
+            x = self.attn_module(x)
+        elif self.attention_module == "fnet":
+            x = self.attn_module(x)
 
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
