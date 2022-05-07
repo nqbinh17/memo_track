@@ -41,7 +41,7 @@ class TransformerEncoderLayerBase(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.return_fc = return_fc
-        self.attention_module = cfg.encoder.attention_module
+        self.attention_module = cfg.attention_module
         if self.attention_module == "self_attn":
             self.attn_module = self.build_self_attention(self.embed_dim, cfg)
         elif self.attention_module == "linear_attn":
@@ -50,7 +50,7 @@ class TransformerEncoderLayerBase(nn.Module):
             self.attn_module = AFTFullAttention(cfg)
         elif self.attention_module == "performer":
             self.attn_module = Performer(cfg)
-        elif self.attention_module == "performer":
+        elif self.attention_module == "fnet":
             self.attn_module = FNet()
         else:
             raise ValueError("Don't support attention module: ", self.attention_module)
