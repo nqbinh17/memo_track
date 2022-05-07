@@ -48,7 +48,10 @@ class EncDecBaseConfig(FairseqDataclass):
     layers_to_keep: Optional[List[int]] = field(
         default=None, metadata={"help": "which layers to *keep* when pruning"}
     )
-
+    # Custom Attention
+    attention_module: str = field(
+        default="self_attn", metadata={"help": "choose attention type: self_attn, linear_attn, free_attn"}
+    )
 
 @dataclass
 class DecoderConfig(EncDecBaseConfig):

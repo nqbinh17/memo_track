@@ -26,13 +26,12 @@ class LinearAttention(nn.Module):
         kernel_query = self.forward_kernel(query)
 
         if state is None:
-            Si = query.new_zeros((N, H, D, D))
-            Zi = query.new_zeros((N, H, D))
+            Zi = kernel_key
+            Si = torch.einsum("nhd,nhm->nhdm", kernel_key, value)
         else:
             Si, Zi = state
-
-        Zi += kernel_key
-        Si += torch.einsum("nhd,nhm->nhdm", kernel_key, value)
+            Zi = Zi + kernel_key
+            Si = Si + torch.einsum("nhd,nhm->nhdm", kernel_key, value)
 
         Z = 1. / (torch.einsum("nhd,nhd->nh", kernel_query, Zi) + self.eps)
         V = torch.einsum("nhd,nhdm,nh->nhm", kernel_query, Si, Z)

@@ -17,7 +17,7 @@ from fairseq.models.transformer import (
 )
 
 from fairseq.custom_transformer.fast_transformer import LinearAttention
-
+from fairseq.custom_transformer.attention_free import AFTFullAttention
 
 class TransformerEncoderLayerBase(nn.Module):
     """Encoder layer block.
@@ -38,11 +38,19 @@ class TransformerEncoderLayerBase(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.return_fc = return_fc
+        self.attention_module = cfg.encoder.attention_module
+        if self.attention_module == "self_attn":
+            self.attn_module = self.build_self_attention(self.embed_dim, cfg)
+        elif self.attention_module == "linear_attn":
+            self.attn_module = LinearAttention(cfg)
+        elif self.attention_module == "free_attn":
+            self.attn_module = AFTFullAttention(cfg)
+        else:
+            raise ValueError("Don't support attention module: ", self.attention_module)
+
         self.embed_dim = cfg.encoder.embed_dim
         self.quant_noise = cfg.quant_noise.pq
         self.quant_noise_block_size = cfg.quant_noise.pq_block_size
-        self.self_attn = self.build_self_attention(self.embed_dim, cfg)
-        self.linear_attn = LinearAttention(cfg)
         self.self_attn_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
         self.dropout_module = FairseqDropout(
             cfg.dropout, module_name=self.__class__.__name__
@@ -198,17 +206,22 @@ class TransformerEncoderLayerBase(nn.Module):
         residual = x
         if self.normalize_before:
             x = self.self_attn_layer_norm(x)
-        x, state = self.linear_attn(x, state)
-        """
-        x, _ = self.self_attn(
-            query=x,
-            key=x,
-            value=x,
-            key_padding_mask=encoder_padding_mask,
-            need_weights=False,
-            attn_mask=attn_mask,
-        )
-        """
+        
+        if self.attention_module == "self_attn":
+            x, _ = self.attn_module(
+                query=x,
+                key=x,
+                value=x,
+                key_padding_mask=encoder_padding_mask,
+                need_weights=False,
+                attn_mask=attn_mask,
+            )
+        elif self.attention_module == "linear_attn":
+            x, state = self.attn_module(x, state)
+        elif self.attention_module == "free_attn":
+            x = self.attn_module(x, encoder_padding_mask)
+        
+
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
         if not self.normalize_before:
