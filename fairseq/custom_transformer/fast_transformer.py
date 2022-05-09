@@ -6,7 +6,7 @@ class LinearAttention(nn.Module):
         self.embed_dim = cfg.encoder.embed_dim
         self.heads = cfg.encoder.attention_heads
         assert self.embed_dim % self.heads
-        self.head_dim = self.embed_dim // self.heads
+        #self.head_dim = self.embed_dim // self.heads
         self.eps = 1e-6
 
         self.fc_query = nn.Linear(self.embed_dim, self.embed_dim)
