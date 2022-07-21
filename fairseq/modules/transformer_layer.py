@@ -20,7 +20,7 @@ from fairseq.custom_transformer.fast_transformer import LinearAttention
 from fairseq.custom_transformer.attention_free import AFTFullAttention
 from fairseq.custom_transformer.performer import Performer
 from fairseq.custom_transformer.fnet import FNet
-
+from fairseq.custom_transformer.context_attention import ContextAttention
 
 class TransformerEncoderLayerBase(nn.Module):
     """Encoder layer block.
@@ -41,6 +41,7 @@ class TransformerEncoderLayerBase(nn.Module):
         super().__init__()
         self.cfg = cfg
         self.return_fc = return_fc
+        self.embed_dim = cfg.encoder.embed_dim
         self.attention_module = cfg.attention_module
         if self.attention_module == "self_attn":
             self.attn_module = self.build_self_attention(self.embed_dim, cfg)
@@ -52,10 +53,11 @@ class TransformerEncoderLayerBase(nn.Module):
             self.attn_module = Performer(cfg)
         elif self.attention_module == "fnet":
             self.attn_module = FNet()
+        elif self.attention_module == 'context_attn':
+            self.attn_module = ContextAttention(cfg)
         else:
             raise ValueError("Don't support attention module: ", self.attention_module)
 
-        self.embed_dim = cfg.encoder.embed_dim
         self.quant_noise = cfg.quant_noise.pq
         self.quant_noise_block_size = cfg.quant_noise.pq_block_size
         self.self_attn_layer_norm = LayerNorm(self.embed_dim, export=cfg.export)
@@ -231,6 +233,8 @@ class TransformerEncoderLayerBase(nn.Module):
             x = self.attn_module(x)
         elif self.attention_module == "fnet":
             x = self.attn_module(x)
+        elif self.attention_module == 'context_attn':
+            x = self.attn_module(x, encoder_padding_mask)
 
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
