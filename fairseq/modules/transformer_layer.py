@@ -234,7 +234,7 @@ class TransformerEncoderLayerBase(nn.Module):
         elif self.attention_module == "fnet":
             x = self.attn_module(x)
         elif self.attention_module == 'context_attn':
-            x = self.attn_module(x, encoder_padding_mask)
+            x, attn_score = self.attn_module(x, encoder_padding_mask)
 
         x = self.dropout_module(x)
         x = self.residual_connection(x, residual)
