@@ -29,7 +29,7 @@ class SequenceGating(nn.Module):
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, q, k):
-        alpha = torch.Sigmoid(self.dropout(self.fc_q(q) + self.fc_k(k))) # batch_size, seq_len, 1
+        alpha = torch.sigmoid(self.dropout(self.fc_q(q) + self.fc_k(k))) # batch_size, seq_len, 1
         x = (1-alpha) * q + alpha * k # batch_size, seq_len, dim
         return x
 
@@ -44,11 +44,14 @@ class ContextAttention(nn.Module):
         self.linears = clones(nn.Linear(self.embed_dim, self.embed_dim), 4)
         self.dropout = nn.Dropout(p=cfg.dropout)
         self.context_linears = clones(nn.Linear(self.embed_dim, self.embed_dim), 2)
-        self.query_gating = SequenceGating(self.embed_dim)
-        self.key_gating = SequenceGating(self.embed_dim)
+        self.query_gating = SequenceGating(self.head_dim)
+        self.key_gating = SequenceGating(self.head_dim)
          
-    def compute_global_vector(self, x, mask):
-        input_mask_expanded = mask.unsqueeze(-1).expand(x.size()).float()
+    def compute_global_vector(self, x, mask=None):
+        if mask is not None:
+            input_mask_expanded = mask.unsqueeze(-1).expand(x.size()).float()
+        else:
+            input_mask_expanded = torch.ones_like(x).float()
         sum_embeddings = torch.sum(x * input_mask_expanded, -2)
         sum_mask = input_mask_expanded.sum(-2)
         sum_mask = torch.clamp(sum_mask, min=1e-9)
